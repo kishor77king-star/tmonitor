@@ -12,7 +12,7 @@
 #
 #**************************************
 
-from pyrogram import Client, Filters
+from pyrogram import Client, filters
 
 def save_list(to_save):
     if to_save == "monitor" or to_save == "m":
