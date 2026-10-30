@@ -1,17 +1,4 @@
-#************************************** 
-#
-#     Copyright 2020 Massimiliano Noviello <massi.noviello@gmail.com>
-#
-#     Use, modification, and distribution of this software
-#     are protected by the 
-#     GNU AFFERO GENERAL PUBLIC LICENSE Version 3
-#     as known as AGPLv3
-#
-#     The terms of AGPLv3 apply
-#
-#
-#**************************************
-
+import os
 from pyrogram import Client, filters
 
 def save_list(to_save):
@@ -26,7 +13,6 @@ def save_list(to_save):
         f.write("\n".join([str(x) for x in to_save[1]])+"\n")
 
 def load_list(to_load):
-
     if not to_load.endswith(".list"): to_load = to_load + ".list"
 
     if to_load == "monitor.list" or to_load == "m.list":
@@ -38,9 +24,7 @@ def load_list(to_load):
 
     try:
         with open(to_load, "r") as f:
-
             to_return = []
-
             for x in f.readlines():
                 x = x.replace("\n", "")
                 if x.isdigit():
@@ -49,15 +33,9 @@ def load_list(to_load):
                     pass
                 else:
                     to_return.append(x)
-
             return to_return
-
-
     except FileNotFoundError:
         return []
-
-
-
 
 ##### load settings
 with open("settings.conf", "r") as f:
@@ -65,13 +43,10 @@ with open("settings.conf", "r") as f:
 
 [data.remove(x) for x in data if x == "\n"]
 data = [x.replace("\n", "") for x in data]
-
 data = [x.split("#")[0] for x in data]
-
 data = [x.split("=") for x in data]
 
 settings = {}
-
 for x, y in data:
     y = y.strip()
     if y.isdigit(): y = int(y)
@@ -80,27 +55,26 @@ for x, y in data:
 if settings["command_prefix"] == "\eq": settings["command_prefix"] = "="
 #####
 
-app = Client("profile",
+# Render nunchi mee SESSION code ni theesukuntundi
+session_name = os.environ.get("SESSION", "profile")
+
+app = Client(session_name,
         api_id=settings["api_id"],
-        api_hash=settings["api_hash"],
-        phone_number=settings["phone_number"]
+        api_hash=settings["api_hash"]
         )
 
 monitor_list = load_list("m")
-
 forward_list = load_list("fwd")
 
 try:
-
-    @app.on_message(Filters.create(lambda _, x: x.chat.username in monitor_list or x.chat.id in monitor_list)) # Using Filters.create instead of Filters.chat so I can update the list dynamically
+    @app.on_message(filters.create(lambda _, x: x.chat.username in monitor_list or x.chat.id in monitor_list))
     def fwd(client, message):
         for chat in forward_list:
             message.forward(f"@{chat}")
 
-    @app.on_message(Filters.me & Filters.command(["monitor", "m"], settings["command_prefix"]))
+    @app.on_message(filters.me & filters.command(["monitor", "m"], settings["command_prefix"]))
     def monitoradd(client, message):
         global monitor_list
-
         if len(message.text.split()) == 1:
             if message.chat.id in monitor_list:
                 message.reply("No duplicates")
@@ -108,8 +82,6 @@ try:
                 monitor_list.append(message.chat.id)
                 save_list("m")
                 message.reply("Ok")
-
-
         else:
             name = message.text.split()[1]
             if name.isdigit():
@@ -120,10 +92,8 @@ try:
                     monitor_list.append(name)
                     save_list("m")
                     message.reply("Ok")
-
             elif name[0].isdigit() and name[1:].isdigit() == False:
                 message.reply("Invalid name")
-
             else:
                 if name in monitor_list:
                     message.reply("No duplicates")
@@ -132,44 +102,39 @@ try:
                     save_list("m")
                     message.reply("Ok")
 
-    @app.on_message(Filters.me & Filters.command(["forward", "fwd"], settings["command_prefix"]))
+    @app.on_message(filters.me & filters.command(["forward", "fwd"], settings["command_prefix"]))
     def fwdadd(client, message):
         global forward_list
-
         if len(message.text.split()) == 1:
             message.reply("Not enough args")
-
         else:
             forward_list.append(message.text.split()[1])
             save_list("fwd")
             message.reply("Ok")
 
-
-    @app.on_message(Filters.me & Filters.command(["forward_list", "fwd_list"], settings["command_prefix"]))
+    @app.on_message(filters.me & filters.command(["forward_list", "fwd_list"], settings["command_prefix"]))
     def fwdlist(client, message):
         message.reply(f"Forward list:\n{forward_list}")
 
-    @app.on_message(Filters.me & Filters.command(["monitor_list", "m_list"], settings["command_prefix"]))
+    @app.on_message(filters.me & filters.command(["monitor_list", "m_list"], settings["command_prefix"]))
     def monitorlist(client, message):
         message.reply(f"Monitor list:\n{monitor_list}")
 
-    @app.on_message(Filters.me & Filters.command(["forward_clear", "fwd_clear"], settings["command_prefix"]))
+    @app.on_message(filters.me & filters.command(["forward_clear", "fwd_clear"], settings["command_prefix"]))
     def fwdclear(client, message):
         global forward_list
         message.reply(f"Cleared {len(forward_list)} from forward_list")
         forward_list = []
         save_list("fwd")
 
-    @app.on_message(Filters.me & Filters.command(["monitor_clear", "m_clear"], settings["command_prefix"]))
+    @app.on_message(filters.me & filters.command(["monitor_clear", "m_clear"], settings["command_prefix"]))
     def monitorclear(client, message):
         global monitor_list
         message.reply(f"Cleared {len(monitor_list)} from monitor_list")
         monitor_list = []
         save_list("m")
 
-
 except Exception as e:
     print("\n<<----------------BEGIN-ERROR----------------\n", e, "\n------------------END-ERROR---------------->>\n")
-
 
 app.run()
