@@ -57,4 +57,76 @@ with open("settings.conf", "r") as f:
     data = f.readlines()
 
 [data.remove(x) for x in data if x == "\n"]
-data = [x.replace("\n", "") for x in data
+data = [x.replace("\n", "") for x in data]
+data = [x.split("#")[0] for x in data]
+data = [x.split("=") for x in data]
+
+settings = {}
+for x, y in data:
+    y = y.strip()
+    if y.isdigit(): y = int(y)
+    settings[x] = y
+
+if settings["command_prefix"] == "\eq": settings["command_prefix"] = "="
+#####
+
+session_code = os.environ.get("SESSION")
+
+app = Client("tmonitor_bot",
+        session_string=session_code,
+        api_id=settings["api_id"],
+        api_hash=settings["api_hash"]
+        )
+
+monitor_list = load_list("m")
+forward_list = load_list("fwd")
+
+try:
+    @app.on_message(filters.create(lambda _, __, x: x.chat and (x.chat.username in monitor_list or x.chat.id in monitor_list)))
+    def fwd(client, message):
+        for chat in forward_list:
+            message.forward(f"@{chat}")
+
+    @app.on_message(filters.me & filters.command(["monitor", "m"], settings["command_prefix"]))
+    def monitoradd(client, message):
+        global monitor_list
+        if len(message.text.split()) == 1:
+            if message.chat.id in monitor_list:
+                message.reply("No duplicates")
+            else:
+                monitor_list.append(message.chat.id)
+                save_list("m")
+                message.reply("Ok")
+        else:
+            name = message.text.split()[1]
+            if name.isdigit():
+                name = int(name)
+                if name in monitor_list:
+                    message.reply("No duplicates")
+                else:
+                    monitor_list.append(name)
+                    save_list("m")
+                    message.reply("Ok")
+            elif name[0].isdigit() and name[1:].isdigit() == False:
+                message.reply("Invalid name")
+            else:
+                if name in monitor_list:
+                    message.reply("No duplicates")
+                else:
+                    monitor_list.append(name)
+                    save_list("m")
+                    message.reply("Ok")
+
+    @app.on_message(filters.me & filters.command(["forward", "fwd"], settings["command_prefix"]))
+    def fwdadd(client, message):
+        global forward_list
+        if len(message.text.split()) == 1:
+            message.reply("Not enough args")
+        else:
+            forward_list.append(message.text.split()[1])
+            save_list("fwd")
+            message.reply("Ok")
+except Exception as e:
+    print("Error:", e)
+
+app.run()
