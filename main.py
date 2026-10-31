@@ -1,5 +1,23 @@
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, filters
+
+# --- DUMMY WEB SERVER FOR RENDER ---
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b"Bot is alive and running!")
+
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), DummyHandler)
+    server.serve_forever()
+
+threading.Thread(target=run_dummy_server, daemon=True).start()
+# -----------------------------------
 
 def save_list(to_save):
     if to_save == "monitor" or to_save == "m":
@@ -8,20 +26,17 @@ def save_list(to_save):
         to_save = ["forward", forward_list]
     else:
         raise ValueError
-
     with open(to_save[0]+".list", "w") as f:
         f.write("\n".join([str(x) for x in to_save[1]])+"\n")
 
 def load_list(to_load):
     if not to_load.endswith(".list"): to_load = to_load + ".list"
-
     if to_load == "monitor.list" or to_load == "m.list":
         to_load = "monitor.list"
     elif to_load == "forward.list" or to_load == "fwd.list":
         to_load = "forward.list"
     else:
         raise ValueError
-
     try:
         with open(to_load, "r") as f:
             to_return = []
@@ -67,7 +82,7 @@ monitor_list = load_list("m")
 forward_list = load_list("fwd")
 
 try:
-    @app.on_message(filters.create(lambda _, x: x.chat.username in monitor_list or x.chat.id in monitor_list))
+    @app.on_message(filters.create(lambda _, x: x.chat and (x.chat.username in monitor_list or x.chat.id in monitor_list)))
     def fwd(client, message):
         for chat in forward_list:
             message.forward(f"@{chat}")
@@ -111,30 +126,7 @@ try:
             forward_list.append(message.text.split()[1])
             save_list("fwd")
             message.reply("Ok")
-
-    @app.on_message(filters.me & filters.command(["forward_list", "fwd_list"], settings["command_prefix"]))
-    def fwdlist(client, message):
-        message.reply(f"Forward list:\n{forward_list}")
-
-    @app.on_message(filters.me & filters.command(["monitor_list", "m_list"], settings["command_prefix"]))
-    def monitorlist(client, message):
-        message.reply(f"Monitor list:\n{monitor_list}")
-
-    @app.on_message(filters.me & filters.command(["forward_clear", "fwd_clear"], settings["command_prefix"]))
-    def fwdclear(client, message):
-        global forward_list
-        message.reply(f"Cleared {len(forward_list)} from forward_list")
-        forward_list = []
-        save_list("fwd")
-
-    @app.on_message(filters.me & filters.command(["monitor_clear", "m_clear"], settings["command_prefix"]))
-    def monitorclear(client, message):
-        global monitor_list
-        message.reply(f"Cleared {len(monitor_list)} from monitor_list")
-        monitor_list = []
-        save_list("m")
-
 except Exception as e:
-    print("\n<<----------------BEGIN-ERROR----------------\n", e, "\n------------------END-ERROR---------------->>\n")
+    print("Error:", e)
 
 app.run()
