@@ -55,10 +55,10 @@ for x, y in data:
 if settings["command_prefix"] == "\eq": settings["command_prefix"] = "="
 #####
 
-# Render nunchi mee SESSION code ni theesukuntundi
-session_name = os.environ.get("SESSION", "profile")
+session_code = os.environ.get("SESSION")
 
-app = Client(session_name,
+app = Client("tmonitor_bot",
+        session_string=session_code,
         api_id=settings["api_id"],
         api_hash=settings["api_hash"]
         )
