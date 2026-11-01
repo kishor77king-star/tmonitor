@@ -41,12 +41,12 @@ def load_list(to_load):
         with open(to_load, "r") as f:
             to_return = []
             for x in f.readlines():
-                x = x.replace("\n", "")
-                if x.isdigit():
+                x = x.strip()
+                if not x: continue
+                try:
+                    # Fix: Correctly parses negative IDs like -100...
                     to_return.append(int(x))
-                elif x[0].isdigit() and not x[1:].isdigit():
-                    pass
-                else:
+                except ValueError:
                     to_return.append(x)
             return to_return
     except FileNotFoundError:
@@ -85,7 +85,13 @@ try:
     @app.on_message(filters.create(lambda _, __, x: x.chat and (x.chat.username in monitor_list or x.chat.id in monitor_list)))
     def fwd(client, message):
         for chat in forward_list:
-            message.forward(f"@{chat}")
+            try:
+                if isinstance(chat, int) or (isinstance(chat, str) and chat.startswith("-100")):
+                    message.forward(int(chat))
+                else:
+                    message.forward(f"@{chat}")
+            except Exception as e:
+                pass
 
     @app.on_message(filters.me & filters.command(["monitor", "m"], settings["command_prefix"]))
     def monitoradd(client, message):
@@ -99,23 +105,17 @@ try:
                 message.reply("Ok")
         else:
             name = message.text.split()[1]
-            if name.isdigit():
+            try:
                 name = int(name)
-                if name in monitor_list:
-                    message.reply("No duplicates")
-                else:
-                    monitor_list.append(name)
-                    save_list("m")
-                    message.reply("Ok")
-            elif name[0].isdigit() and name[1:].isdigit() == False:
-                message.reply("Invalid name")
+            except ValueError:
+                pass
+            
+            if name in monitor_list:
+                message.reply("No duplicates")
             else:
-                if name in monitor_list:
-                    message.reply("No duplicates")
-                else:
-                    monitor_list.append(name)
-                    save_list("m")
-                    message.reply("Ok")
+                monitor_list.append(name)
+                save_list("m")
+                message.reply("Ok")
 
     @app.on_message(filters.me & filters.command(["forward", "fwd"], settings["command_prefix"]))
     def fwdadd(client, message):
@@ -123,9 +123,18 @@ try:
         if len(message.text.split()) == 1:
             message.reply("Not enough args")
         else:
-            forward_list.append(message.text.split()[1])
-            save_list("fwd")
-            message.reply("Ok")
+            name = message.text.split()[1]
+            try:
+                name = int(name)
+            except ValueError:
+                pass
+
+            if name in forward_list:
+                message.reply("No duplicates")
+            else:
+                forward_list.append(name)
+                save_list("fwd")
+                message.reply("Ok")
 except Exception as e:
     print("Error:", e)
 
